@@ -52,6 +52,10 @@ DWORD getRequiredSize() {
 	return GET_REQUIRED_SIZE_ERROR;
 }
 
+inline bool noExistOn(__in const std::set<TCP_STATE>& except_states, __in const DWORD state) {
+	return except_states.find((TCP_STATE)state) != except_states.end();
+}
+
 DWORD getTcpTable(__in const DWORD size, __in const unsigned short port, __in const std::set<TCP_STATE>& except_states, __out std::vector<std::string>& remoteAddress) {
 	using namespace std;
 
@@ -64,9 +68,10 @@ DWORD getTcpTable(__in const DWORD size, __in const unsigned short port, __in co
 		set<string> addresses;
 		bool needAllState = except_states.empty();
 		for (DWORD i = 0; i < pTcpTable->dwNumEntries; i++) {
-			u_short localPort = ntohs((u_short)pTcpTable->table[i].dwLocalPort);
-			if (localPort == port && (needAllState || except_states.find((TCP_STATE)pTcpTable->table[i].dwState) != except_states.end())) {
-				addresses.insert(convertAddress(pTcpTable->table[i].dwRemoteAddr));
+			MIB_TCPROW& entry = pTcpTable->table[i];
+			u_short localPort = ntohs((u_short)entry.dwLocalPort);
+			if (localPort == port && (needAllState || noExistOn(except_states, entry.dwState))) {
+				addresses.insert(convertAddress(entry.dwRemoteAddr));
 			}
 		}
 		setToVectorAndReturnSize(addresses, remoteAddress);

@@ -157,7 +157,7 @@ void TcpServerSocket::recordMessage(const char *headerMessage)
 }
 
 
-// 소켓 함수 오류 출력 후 종료
+// 소켓 함수 에러메세지 획득
 std::string getLastWsaError(const char *msg)
 {
 	LPVOID lpMsgBuf;

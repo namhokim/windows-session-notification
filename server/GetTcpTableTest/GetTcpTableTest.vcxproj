@@ -20,6 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetStat.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NetStat.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A8126CD8-5AB8-43FD-A5AD-1EA687077D1A}</ProjectGuid>

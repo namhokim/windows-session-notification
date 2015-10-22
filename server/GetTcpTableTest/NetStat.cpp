@@ -53,7 +53,7 @@ DWORD getRequiredSize() {
 }
 
 inline bool noExistOn(__in const std::set<TCP_STATE>& except_states, __in const DWORD state) {
-	return except_states.find((TCP_STATE)state) != except_states.end();
+	return except_states.find((TCP_STATE)state) == except_states.end();
 }
 
 DWORD getTcpTable(__in const DWORD size, __in const unsigned short port, __in const std::set<TCP_STATE>& except_states, __out std::vector<std::string>& remoteAddress) {

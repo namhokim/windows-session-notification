@@ -20,7 +20,6 @@ private:
 	void recordMessage(const char*);
 };
 
-
 class TcpClientSubscriber {
 public:
 	TcpClientSubscriber();
@@ -50,7 +49,6 @@ private:
 	CRITICAL_SECTION criticalSection;
 	TcpServerSocket * tss;
 	std::vector<SOCKET> subscribers;
-	HANDLE hThread;
 	bool continueAccept;
 
 	void disconnectSubscribers();
@@ -61,7 +59,7 @@ BroadcastTcpServer::BroadcastTcpServer() : tss(0), subscriber(0)
 {
 	// 윈속 초기화
 	WSADATA wsa;
-	this->winsockInitialized = (WSAStartup(MAKEWORD(2, 2), &wsa) == 0);
+	this->winsockInitialized = (::WSAStartup(MAKEWORD(2, 2), &wsa) == 0);
 
 	this->tss = new TcpServerSocket();
 	this->subscriber = new TcpClientSubscriber();
@@ -73,7 +71,7 @@ BroadcastTcpServer::~BroadcastTcpServer()
 	close();
 	if (this->winsockInitialized) {
 		// 윈속 종료
-		WSACleanup();
+		::WSACleanup();
 
 		this->winsockInitialized = false;
 	}
@@ -190,10 +188,10 @@ int TcpClientSubscriber::broadcast(const char * message)
 {
 	using namespace std;
 
-	EnterCriticalSection(&criticalSection);
+	::EnterCriticalSection(&criticalSection);
 	vector<SOCKET> notifications(this->subscribers);
 	this->subscribers.clear();
-	LeaveCriticalSection(&criticalSection);
+	::LeaveCriticalSection(&criticalSection);
 
 	vector<SOCKET> nextSubscribers(notifications.size());
 	for (vector<SOCKET>::size_type pos = 0; pos < notifications.size(); pos++) {
@@ -208,18 +206,18 @@ int TcpClientSubscriber::broadcast(const char * message)
 		nextSubscribers.push_back(s);
 	}
 
-	EnterCriticalSection(&criticalSection);
+	::EnterCriticalSection(&criticalSection);
 	this->subscribers.insert(this->subscribers.end(), nextSubscribers.begin(), nextSubscribers.end());
-	LeaveCriticalSection(&criticalSection);
+	::LeaveCriticalSection(&criticalSection);
 
 	return nextSubscribers.size();
 }
 
 void TcpClientSubscriber::addSubscriber(SOCKET socket)
 {
-	EnterCriticalSection(&criticalSection);
+	::EnterCriticalSection(&criticalSection);
 	this->subscribers.push_back(socket);
-	LeaveCriticalSection(&criticalSection);
+	::LeaveCriticalSection(&criticalSection);
 }
 
 void TcpClientSubscriber::acceptAsync(TcpServerSocket * tss)
@@ -228,17 +226,20 @@ void TcpClientSubscriber::acceptAsync(TcpServerSocket * tss)
 	this->continueAccept = true;
 
 	DWORD ThreadID;
-	this->hThread = CreateThread(NULL, 0, StaticThreadStart, (LPVOID)this, 0, &ThreadID);
+	HANDLE hThread = ::CreateThread(NULL, 0, StaticThreadStart, (LPVOID)this, 0, &ThreadID);
+	if (hThread != NULL) {
+		::CloseHandle(hThread);
+	}
 }
 
 void TcpClientSubscriber::disconnectSubscribers()
 {
 	using namespace std;
 
-	EnterCriticalSection(&criticalSection);
+	::EnterCriticalSection(&criticalSection);
 	vector<SOCKET> notifications(this->subscribers);
 	this->subscribers.clear();
-	LeaveCriticalSection(&criticalSection);
+	::LeaveCriticalSection(&criticalSection);
 
 	for (vector<SOCKET>::size_type pos = 0; pos < notifications.size(); pos++) {
 		SOCKET s = notifications.at(pos);

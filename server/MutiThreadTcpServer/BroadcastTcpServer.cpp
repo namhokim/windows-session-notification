@@ -189,8 +189,8 @@ int TcpClientSubscriber::broadcast(const char * message)
 	using namespace std;
 
 	::EnterCriticalSection(&criticalSection);
-	vector<SOCKET> notifications(this->subscribers);
-	this->subscribers.clear();
+	vector<SOCKET> notifications(this->subscribers.size());
+	notifications.swap(this->subscribers);
 	::LeaveCriticalSection(&criticalSection);
 
 	vector<SOCKET> nextSubscribers(notifications.size());
@@ -200,7 +200,7 @@ int TcpClientSubscriber::broadcast(const char * message)
 		int retval = ::send(s, message, strlen(message), 0);
 		if (retval == SOCKET_ERROR) {
 			::closesocket(s);
-			break;
+			continue;
 		}
 		// TODO - check send bytes equals to length of message
 		nextSubscribers.push_back(s);

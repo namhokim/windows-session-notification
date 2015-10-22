@@ -18,5 +18,25 @@
     <ClCompile Include="ServiceMain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="NetStat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BroadcastTcpServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageCreator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NetStat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BroadcastTcpServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageCreator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

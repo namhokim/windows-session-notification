@@ -147,7 +147,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BroadcastTcpServer.cpp" />
+    <ClCompile Include="MessageCreator.cpp" />
+    <ClCompile Include="NetStat.cpp" />
     <ClCompile Include="ServiceMain.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BroadcastTcpServer.h" />
+    <ClInclude Include="MessageCreator.h" />
+    <ClInclude Include="NetStat.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

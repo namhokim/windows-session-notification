@@ -27,7 +27,6 @@ HANDLE                g_ServiceStopEvent = INVALID_HANDLE_VALUE;
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR *argv);
 VOID WINAPI ServiceCtrlHandler(DWORD);
 DWORD WINAPI ServiceCtrlHandlerEx(DWORD, DWORD, LPVOID, LPVOID);
-DWORD WINAPI ServiceWorkerThread(LPVOID lpParam);
 
 #define SERVICE_NAME  _T("SCNS: Session Changing Notification Service")
 
@@ -124,22 +123,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR *argv)
 		LOGMESSAGE(_T("SCNS: ServiceMain: SetServiceStatus returned error"));
 	}
 
-	// Start the thread that will perform the main task of the service
-	HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, NULL, 0, NULL);
-
-	LOGMESSAGE(_T("SCNS: ServiceMain: Waiting for Worker Thread to complete"));
-
-	// Wait until our worker thread exits effectively signaling that the service needs to stop
-	WaitForSingleObject(hThread, INFINITE);
-
-	LOGMESSAGE(_T("SCNS: ServiceMain: Worker Thread Stop Event signaled"));
-
-
-	/*
-	* Perform any cleanup tasks
-	*/
-	LOGMESSAGE(_T("SCNS: ServiceMain: Performing Cleanup Operations"));
-
+	WaitForSingleObject(g_ServiceStopEvent, INFINITE);
 	CloseHandle(g_ServiceStopEvent);
 
 	g_ServiceStatus.dwControlsAccepted = 0;
@@ -214,24 +198,4 @@ DWORD WINAPI ServiceCtrlHandlerEx(DWORD dwControl, DWORD dwEventType, LPVOID lpE
 	}
 
 	return NO_ERROR;
-}
-
-DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
-{
-	LOGMESSAGE(_T("SCNS: ServiceWorkerThread: Entry"));
-
-	//  Periodically check if the service has been requested to stop
-	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
-	{
-		/*
-		* Perform main service function here
-		*/
-
-		//  Simulate some work by sleeping
-		Sleep(3000);
-	}
-
-	LOGMESSAGE(_T("SCNS: ServiceWorkerThread: Exit"));
-
-	return ERROR_SUCCESS;
 }

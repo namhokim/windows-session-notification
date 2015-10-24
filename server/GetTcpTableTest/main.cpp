@@ -17,7 +17,7 @@ int main()
 	netstatOnlyTcp(3389, excepts, remoteAddrs);*/
 
 	printf("error code: %d\n", netstatOnlyTcp(3389, remoteAddrs));
-	printf("count: %d\n", remoteAddrs.size());
+	printf("count: %zd\n", remoteAddrs.size());
 	copy(remoteAddrs.begin(), remoteAddrs.end(), ostream_iterator<string>(cout, " "));
 
 	return 0;

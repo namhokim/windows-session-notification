@@ -12,6 +12,7 @@ public:
 	void listen(unsigned short port);
 	int broadcast(const char* message);
 	void close();
+	bool hasSubscriber();
 private:
 	bool winsockInitialized;
 	TcpServerSocket* tss;

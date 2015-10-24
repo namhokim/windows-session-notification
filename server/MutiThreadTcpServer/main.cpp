@@ -8,10 +8,11 @@ int main(int argc, char* argv[])
 	const int SixtySeconds = 60000;
 
 	BroadcastTcpServer server;
-	server.listen(9000);
+	server.listen(13389);
 	Sleep(TenSeconds);
-	server.broadcast("Message");
+	server.broadcast("{\"test\": \"message\"}");
 	Sleep(ThirtySeconds);
+	server.broadcast("{\"test\": \"message2\"}");
 
 	return 0;
 }

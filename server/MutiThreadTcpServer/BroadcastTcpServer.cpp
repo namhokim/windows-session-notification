@@ -3,7 +3,11 @@
 #include <ws2tcpip.h>
 #include <string>
 #include <vector>
+#include <list>
+#include <process.h>	// _beginthreadex
 #pragma comment(lib, "ws2_32.lib")
+
+const static int DeletedObject = 0;
 
 std::string getLastWsaError(const char *msg);
 
@@ -14,12 +18,12 @@ public:
 	bool bind(unsigned short port);
 	bool listen(int backlog);
 	SOCKET accept(struct sockaddr* addr, int* addrlen);
+	void close();
 private:
 	SOCKET serverSocket;
 	std::string message;
 	void recordMessage(const char*);
 };
-
 
 class TcpClientSubscriber {
 public:
@@ -31,37 +35,46 @@ public:
 	void stopAcceptAsync() {
 		this->continueAccept = false;
 	}
+	bool hasSubscriber();
 
-	static DWORD WINAPI StaticThreadStart(void* Param)
+	static unsigned __stdcall asyncAcceptThreadFunction(void* Param)
 	{
 		TcpClientSubscriber* self = (TcpClientSubscriber*)Param;
-		while (true) {
-			SOCKET client_sock;
+		::ResetEvent(self->threadStopEvent);	// nonsignaled
+		while (self->continueAccept) {
 			SOCKADDR_IN clientaddr;
 			int addrlen = sizeof(clientaddr);
-			client_sock = self->tss->accept((SOCKADDR *)&clientaddr, &addrlen);
+			if (self->tss == DeletedObject) {
+				return 0;
+			}
+			SOCKET client_sock = self->tss->accept((SOCKADDR *)&clientaddr, &addrlen);
 			if (client_sock != INVALID_SOCKET) {
-				self->addSubscriber(client_sock);
+				if (self->continueAccept) {
+					self->addSubscriber(client_sock);
+				}
 			}
 		}
+		::SetEvent(self->threadStopEvent);	// signaled
+		return 0;
 	}
 
 private:
 	CRITICAL_SECTION criticalSection;
 	TcpServerSocket * tss;
-	std::vector<SOCKET> subscribers;
-	HANDLE hThread;
-	bool continueAccept;
+	std::list<SOCKET> subscribers;
+	volatile bool continueAccept;	// use volatile for multi-thread check
+	HANDLE threadStopEvent;
 
 	void disconnectSubscribers();
+	void stopServer();
 };
 
 
-BroadcastTcpServer::BroadcastTcpServer() : tss(0), subscriber(0)
+BroadcastTcpServer::BroadcastTcpServer() : tss(DeletedObject), subscriber(DeletedObject)
 {
 	// 윈속 초기화
 	WSADATA wsa;
-	this->winsockInitialized = (WSAStartup(MAKEWORD(2, 2), &wsa) == 0);
+	this->winsockInitialized = (::WSAStartup(MAKEWORD(2, 2), &wsa) == 0);
 
 	this->tss = new TcpServerSocket();
 	this->subscriber = new TcpClientSubscriber();
@@ -73,7 +86,7 @@ BroadcastTcpServer::~BroadcastTcpServer()
 	close();
 	if (this->winsockInitialized) {
 		// 윈속 종료
-		WSACleanup();
+		::WSACleanup();
 
 		this->winsockInitialized = false;
 	}
@@ -99,13 +112,18 @@ void BroadcastTcpServer::close()
 {
 	if (this->subscriber != 0) {
 		delete this->subscriber;
-		this->subscriber = 0;
+		this->subscriber = DeletedObject;
 	}
 
 	if (this->tss != 0) {
 		delete this->tss;
-		this->tss = 0;
+		this->tss = DeletedObject;
 	}
+}
+
+bool BroadcastTcpServer::hasSubscriber()
+{
+	return subscriber->hasSubscriber();
 }
 
 
@@ -116,9 +134,7 @@ TcpServerSocket::TcpServerSocket() : serverSocket(INVALID_SOCKET) {
 }
 
 TcpServerSocket::~TcpServerSocket() {
-	if (this->serverSocket != INVALID_SOCKET) {
-		::closesocket(this->serverSocket);
-	}
+	close();
 }
 
 bool TcpServerSocket::bind(unsigned short port)
@@ -151,6 +167,14 @@ SOCKET TcpServerSocket::accept(sockaddr * addr, int * addrlen)
 	return ::accept(this->serverSocket, addr, addrlen);
 }
 
+void TcpServerSocket::close()
+{
+	if (this->serverSocket != INVALID_SOCKET) {
+		::closesocket(this->serverSocket);
+		this->serverSocket = INVALID_SOCKET;
+	}
+}
+
 void TcpServerSocket::recordMessage(const char *headerMessage)
 {
 	this->message.assign(getLastWsaError(headerMessage));
@@ -174,74 +198,98 @@ std::string getLastWsaError(const char *msg)
 }
 
 
-TcpClientSubscriber::TcpClientSubscriber()
+TcpClientSubscriber::TcpClientSubscriber() : threadStopEvent(INVALID_HANDLE_VALUE), tss(DeletedObject)
 {
-	::InitializeCriticalSectionAndSpinCount(&criticalSection, 0x00000400);
+	::InitializeCriticalSection(&criticalSection);
+	threadStopEvent = ::CreateEvent(
+		NULL,	// default security attributes
+		TRUE,	// manual-reset event
+		TRUE,	// initial state is signaled
+		NULL);
 }
 
 TcpClientSubscriber::~TcpClientSubscriber()
 {
-	this->continueAccept = false;
+	stopAcceptAsync();
+	stopServer();
 	disconnectSubscribers();
+	::WaitForSingleObject(this->threadStopEvent, INFINITE);
+	::CloseHandle(this->threadStopEvent);
 	::DeleteCriticalSection(&criticalSection);
 }
 
 int TcpClientSubscriber::broadcast(const char * message)
 {
+	const int CannotSend = 0;
 	using namespace std;
 
-	EnterCriticalSection(&criticalSection);
-	vector<SOCKET> notifications(this->subscribers);
-	this->subscribers.clear();
-	LeaveCriticalSection(&criticalSection);
-
-	vector<SOCKET> nextSubscribers(notifications.size());
-	for (vector<SOCKET>::size_type pos = 0; pos < notifications.size(); pos++) {
-		SOCKET s = notifications.at(pos);
-
-		int retval = ::send(s, message, strlen(message), 0);
-		if (retval == SOCKET_ERROR) {
+	int succeedCount = 0;
+	::EnterCriticalSection(&criticalSection);
+	list<SOCKET>::iterator pos = this->subscribers.begin();
+	while (pos != this->subscribers.end()) {
+		SOCKET s = *pos;
+		int retval = ::send(s, message, (int)strlen(message), 0);
+		if (retval == SOCKET_ERROR || retval == CannotSend) {
+			::shutdown(s, SD_SEND);
 			::closesocket(s);
-			break;
+			this->subscribers.erase(pos++);
 		}
-		// TODO - check send bytes equals to length of message
-		nextSubscribers.push_back(s);
+		else {
+			succeedCount++;
+			pos++;
+		}
 	}
+	::LeaveCriticalSection(&criticalSection);
 
-	EnterCriticalSection(&criticalSection);
-	this->subscribers.insert(this->subscribers.end(), nextSubscribers.begin(), nextSubscribers.end());
-	LeaveCriticalSection(&criticalSection);
-
-	return nextSubscribers.size();
+	return succeedCount;
 }
 
 void TcpClientSubscriber::addSubscriber(SOCKET socket)
 {
-	EnterCriticalSection(&criticalSection);
+	::EnterCriticalSection(&criticalSection);
 	this->subscribers.push_back(socket);
-	LeaveCriticalSection(&criticalSection);
+	::LeaveCriticalSection(&criticalSection);
 }
 
 void TcpClientSubscriber::acceptAsync(TcpServerSocket * tss)
 {
+	const int BeginThreadExFailed = 0;
+
 	this->tss = tss;
 	this->continueAccept = true;
 
-	DWORD ThreadID;
-	this->hThread = CreateThread(NULL, 0, StaticThreadStart, (LPVOID)this, 0, &ThreadID);
+	unsigned int threadID;
+	HANDLE hThread = (HANDLE)::_beginthreadex(NULL, 0, asyncAcceptThreadFunction, (LPVOID)this, 0, &threadID);
+	if (hThread != BeginThreadExFailed) {
+		::CloseHandle(hThread);
+	}
+}
+
+bool TcpClientSubscriber::hasSubscriber()
+{
+	::EnterCriticalSection(&criticalSection);
+	bool has = !(this->subscribers.empty());
+	::LeaveCriticalSection(&criticalSection);
+	return has;
 }
 
 void TcpClientSubscriber::disconnectSubscribers()
 {
 	using namespace std;
 
-	EnterCriticalSection(&criticalSection);
-	vector<SOCKET> notifications(this->subscribers);
-	this->subscribers.clear();
-	LeaveCriticalSection(&criticalSection);
-
-	for (vector<SOCKET>::size_type pos = 0; pos < notifications.size(); pos++) {
-		SOCKET s = notifications.at(pos);
+	::EnterCriticalSection(&criticalSection);
+	list<SOCKET>::iterator pos = this->subscribers.begin();
+	while (pos != this->subscribers.end()) {
+		SOCKET s = *pos;
 		::closesocket(s);
+		this->subscribers.erase(pos++);
+	}
+	::LeaveCriticalSection(&criticalSection);
+}
+
+void TcpClientSubscriber::stopServer()
+{
+	if (tss != DeletedObject) {
+		tss->close();
 	}
 }

@@ -160,7 +160,9 @@ EXIT:
 
 void NoticeSessionChanging(DWORD code, LPVOID lpContext) {
 	ServerAndMessage* sam = (ServerAndMessage*)lpContext;
-	sam->server->broadcast(sam->message->makeMessage(code).c_str());
+	if (sam->server->hasSubscriber()) {
+		sam->server->broadcast(sam->message->makeMessage(code).c_str());
+	}
 }
 
 VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
@@ -205,7 +207,6 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 DWORD WINAPI ServiceCtrlHandlerEx(DWORD dwControl, DWORD dwEventType, LPVOID lpEventData, LPVOID lpContext) {
 
 	if (dwControl == SERVICE_CONTROL_SESSIONCHANGE) {
-
 		NoticeSessionChanging(dwEventType, lpContext);
 	}
 	else {

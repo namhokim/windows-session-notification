@@ -1,20 +1,28 @@
-var JStream = require('jstream');
-var net = require('net');
+var snsClient = require('./SnsClient');
+var slackBot = require('./slackMessage');
 
-var hawaii = '10.255.1.146';
-var hawaiiOne = '10.255.1.183';
-var serverName = 'hawaii';
+// configurations
+var notiServers = {
+	'10.11.22.1': 'Server 1',
+	'10.11.22.2': 'Server 2'
+};
 
-var request = require('request');
-var client = new net.Socket();
-client.connect(14172, hawaii, function() {
-	console.log('Connected');
-
-	client.pipe(new JStream()).on('data', function(obj) {
-    console.log(obj);
-  });
+var slack = new slackBot({
+	team: "hawaii",
+	token: "f5rfwj5uorPWeJDnEkp6ApUJ",
+	channel: "test"
 });
 
-client.on('close', function() {
-	console.log('Connection closed');
-});
+var ipNameMap = {
+	'192.168.1.2': 'Raphael(wi-fi)',
+	'192.168.1.3': 'Gyeomgun(wi-fi)',
+	'192.168.1.4': 'Raphael(wire)'
+};
+
+var serverPort  = 14172;
+
+
+for (ip in notiServers) {
+	var client = new snsClient(ip, notiServers[ip], slack, ipNameMap);
+	client.connect(serverPort);
+}

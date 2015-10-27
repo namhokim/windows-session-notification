@@ -22,8 +22,6 @@
   },
   "homepage": "https://github.com/namhokim/windows-session-notification#readme",
   "dependencies": {
-    "jstream": "^0.2.8",
-    "net": "^1.0.2",
-    "request": "^2.65.0"
+    "jstream": "^0.2.8"
   }
 }

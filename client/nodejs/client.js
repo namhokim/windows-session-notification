@@ -1,28 +1,17 @@
 var snsClient = require('./SnsClient');
 var slackBot = require('./slackMessage');
+var config = require('./config');	// using config.json
 
-// configurations
-var notiServers = {
-	'10.11.22.1': 'Server 1',
-	'10.11.22.2': 'Server 2'
-};
 
 var slack = new slackBot({
-	team: "hawaii",
-	token: "f5rfwj5uorPWeJDnEkp6ApUJ",
-	channel: "test"
+	team: config.slack.team,
+	token: config.slack.token,
+	channel: config.slack.channel
 });
 
-var ipNameMap = {
-	'192.168.1.2': 'Raphael(wi-fi)',
-	'192.168.1.3': 'Gyeomgun(wi-fi)',
-	'192.168.1.4': 'Raphael(wire)'
-};
+const serverPort  = 14172;
 
-var serverPort  = 14172;
-
-
-for (ip in notiServers) {
-	var client = new snsClient(ip, notiServers[ip], slack, ipNameMap);
+for (ip in config.notiServers) {
+	var client = new snsClient(ip, config.notiServers[ip], slack, config.ipNameMap);
 	client.connect(serverPort);
 }

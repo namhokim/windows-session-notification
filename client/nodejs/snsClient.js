@@ -1,11 +1,44 @@
 var net = require('net');
 var JStream = require('jstream');
 
+var MilliSeconds = 1000;
+var Seconds = 60 * MilliSeconds;
+var Minutes = 60 * Seconds;
+var ThirtyMinutes = 30 * Minutes;
+
+function getValueFrom(map, key, defaultValue) {
+	var candidatedValue = map[key];
+	if (typeof map !== 'object' || typeof candidatedValue === 'undefined') {
+		return defaultValue;
+	}
+	return candidatedValue;
+}
+
+function popFrom(map, defaultValue) {
+	var poppedValue = map.pop();
+	if (typeof map !== 'object' || typeof poppedValue === 'undefined') {
+		return defaultValue;
+	}
+	return poppedValue;
+}
+
+function padStr(i) {
+    return (i < 10) ? "0" + i : "" + i;
+}
+
+function getToday() {
+	var date = new Date();
+	return padStr(date.getFullYear()) + "-" +
+                  padStr(1 + date.getMonth()) + "-" +
+                  padStr(date.getDate()) + " " +
+                  padStr(date.getHours()) + ":" +
+                  padStr(date.getMinutes()) + ":" +
+                  padStr(date.getSeconds());
+}
 
 var SnsClient = function(ipAddr, name, messenger, ipNameMap) {
 	this.ip = ipAddr;
 	this.name = name;
-	this.client = new net.Socket();
 	this.messenger = messenger;
 	this.ipNameMap = ipNameMap;
 	this.connectStack = [];
@@ -13,16 +46,13 @@ var SnsClient = function(ipAddr, name, messenger, ipNameMap) {
 		console.log(obj);
 
 		if (obj.type === 'WTS_SESSION_UNLOCK') {
-			var addr = (typeof this.ipNameMap[obj.addrs[0]] === 'undefined') ?  obj.addrs[0] : this.ipNameMap[obj.addrs[0]];
+			var addr = getValueFrom(this.ipNameMap, obj.addrs[0], obj.addrs[0]);
 			this.connectStack.push(addr);
-			var msg = 'Using ' + this.name + ' by ' + addr;
+			var msg = 'Connect to ' + this.name + ' by ' + addr + ' , ' + getToday();
 			this.messenger.sendMessage(msg);
 		} else if(obj.type === 'WTS_CONSOLE_DISCONNECT' && obj.addrs.length === 0) {
-			var addr = this.connectStack.pop();
-			if (addr === 'undefined') {
-				addr = 'someone';
-			}
-			var msg = 'Release ' + this.name + ' by ' + addr;
+			var addr = popFrom(this.connectStack, 'someone');
+			var msg = 'Disconnect to ' + this.name + ' by ' + addr + ' , ' + getToday();
 			this.messenger.sendMessage(msg);
 		}
 	};
@@ -31,8 +61,14 @@ var SnsClient = function(ipAddr, name, messenger, ipNameMap) {
 SnsClient.prototype.connect = function(serverPort) {
 	var name = this.name;
 	var ip = this.ip;
-	var client = this.client;
-	var me = this;
+	var client = new net.Socket({
+		allowHalfOpen: true,
+		readable: true,
+		writable: false
+	});
+	var self = this;
+	
+	client.setTimeout(ThirtyMinutes);
 
 	console.log("try connect to " + name);
 
@@ -40,12 +76,23 @@ SnsClient.prototype.connect = function(serverPort) {
 		console.log(name + ' Connected');
 
 		client.pipe(new JStream()).on('data', function(obj) {
-	    	me.handler(obj);
+	    	self.handler(obj);
 		});
 	});
 
 	client.on('close', function() {
 		console.log('Connection closed');
+		self.connect(serverPort);
+	});
+
+	client.on('timeout', function() {
+		console.log("Idle timeout");
+		client.end();
+		client.destroy();
+	});
+
+	client.on('error', function(obj) {
+		console.log(obj);
 	});
 };
 

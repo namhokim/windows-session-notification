@@ -20,13 +20,13 @@ function SlackMessage(configure) {
 	  path: '/services/hooks/slackbot?token=' + configure.token + '&channel=%23' + configure.channel,
 	  method: 'POST',
 	  headers: {
-	  	'Content-Type': 'plain/text'
+	  	'Content-Type': 'plain/text; charset=utf-8'
 	  }
 	};
 }
 
 SlackMessage.prototype.sendMessage = function(msg) {
-	this.options.headers['Content-Length'] = msg.length;
+	this.options.headers['Content-Length'] = Buffer.byteLength(msg, 'utf8');
 
 	var req = https.request(this.options);
 	req.write(msg);

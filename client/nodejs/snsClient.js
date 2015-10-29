@@ -1,10 +1,12 @@
 var net = require('net');
 var JStream = require('jstream');
 
-var MilliSeconds = 1000;
-var Seconds = 60 * MilliSeconds;
-var Minutes = 60 * Seconds;
-var ThirtyMinutes = 30 * Minutes;
+const MilliSeconds = 1;
+const Seconds = 1000 * MilliSeconds;
+const Minutes = 60 * Seconds;
+const ThirtyMinutes = 30 * Minutes;
+const FiveMinutes = 5 * Minutes;
+var timeoutConfig = FiveMinutes;
 
 function getValueFrom(map, key, defaultValue) {
 	var candidatedValue = map[key];
@@ -68,7 +70,7 @@ SnsClient.prototype.connect = function(serverPort) {
 	});
 	var self = this;
 	
-	client.setTimeout(ThirtyMinutes);
+	client.setTimeout(timeoutConfig);
 
 	console.log("try connect to " + name);
 

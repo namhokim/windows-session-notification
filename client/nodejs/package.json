@@ -1,0 +1,27 @@
+{
+  "name": "sns",
+  "version": "1.0.0",
+  "description": "Session Notification Service Client for Windows",
+  "main": "client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/namhokim/windows-session-notification.git"
+  },
+  "keywords": [
+    "windows",
+    "session",
+    "notification"
+  ],
+  "author": "namo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/namhokim/windows-session-notification/issues"
+  },
+  "homepage": "https://github.com/namhokim/windows-session-notification#readme",
+  "dependencies": {
+    "jstream": "^0.2.8"
+  }
+}

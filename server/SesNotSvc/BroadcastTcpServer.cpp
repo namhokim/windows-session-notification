@@ -139,6 +139,13 @@ public:
 		return has;
 	}
 
+	void broadcastCurrentCount() {
+		char msg[BUFSIZ];
+		int count = getSubscribeCount();
+		::sprintf_s(msg, BUFSIZ, "{\"currentSubscribers\": {\"count\": %d}}", count);
+		broadcast(msg);
+	}
+
 	static unsigned __stdcall asyncAcceptThreadFunction(void* Param)
 	{
 		TcpClientSubscriber* self = (TcpClientSubscriber*)Param;
@@ -155,6 +162,7 @@ public:
 					self->addSubscriber(client_sock);
 				}
 			}
+			self->broadcastCurrentCount();
 		}
 		::SetEvent(self->threadStopEvent);	// signaled
 		return 0;
@@ -185,6 +193,14 @@ private:
 		if (tss != DeletedObject) {
 			tss->close();
 		}
+	}
+
+	int getSubscribeCount() {
+		size_t count;
+		::EnterCriticalSection(&criticalSection);
+		count = this->subscribers.size();
+		::LeaveCriticalSection(&criticalSection);
+		return count;
 	}
 };
 

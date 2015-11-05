@@ -200,7 +200,7 @@ private:
 		::EnterCriticalSection(&criticalSection);
 		count = this->subscribers.size();
 		::LeaveCriticalSection(&criticalSection);
-		return count;
+		return (int)count;
 	}
 };
 

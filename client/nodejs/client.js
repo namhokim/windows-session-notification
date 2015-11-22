@@ -17,7 +17,7 @@ var slack = new slackBot({
 	channel: config.slack.channel
 });
 
-const serverPort  = 13389;
+const serverPort = 14172;
 
 for (ip in config.notiServers) {
     var client = new snsClient(ip, config.notiServers[ip], slack, ipNameMap);

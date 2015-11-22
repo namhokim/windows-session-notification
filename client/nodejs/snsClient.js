@@ -41,7 +41,6 @@ var SnsClient = function(ipAddr, name, messenger, ipNameMap) {
 
 		if (obj.type === 'WTS_SESSION_UNLOCK') {
 		    var addr = ipNameMap.get(obj.addrs[0]);
-		    console.log(addr);
 			this.connectStack.push(addr);
 			var msg = 'Connect to ' + this.name + ' by ' + addr + ' , ' + getToday();
 			this.messenger.sendMessage(msg);

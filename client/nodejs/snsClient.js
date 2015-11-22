@@ -8,14 +8,6 @@ const ThirtyMinutes = 30 * Minutes;
 const FiveMinutes = 5 * Minutes;
 var timeoutConfig = FiveMinutes;
 
-function getValueFrom(map, key, defaultValue) {
-	var candidatedValue = map[key];
-	if (typeof map !== 'object' || typeof candidatedValue === 'undefined') {
-		return defaultValue;
-	}
-	return candidatedValue;
-}
-
 function popFrom(map, defaultValue) {
 	var poppedValue = map.pop();
 	if (typeof map !== 'object' || typeof poppedValue === 'undefined') {
@@ -45,10 +37,11 @@ var SnsClient = function(ipAddr, name, messenger, ipNameMap) {
 	this.ipNameMap = ipNameMap;
 	this.connectStack = [];
 	this.handler = function handler(obj) {
-		console.log(obj);
+	    console.log(obj);
 
 		if (obj.type === 'WTS_SESSION_UNLOCK') {
-			var addr = getValueFrom(this.ipNameMap, obj.addrs[0], obj.addrs[0]);
+		    var addr = ipNameMap.get(obj.addrs[0]);
+		    console.log(addr);
 			this.connectStack.push(addr);
 			var msg = 'Connect to ' + this.name + ' by ' + addr + ' , ' + getToday();
 			this.messenger.sendMessage(msg);

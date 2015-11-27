@@ -6,7 +6,7 @@ var keyValueMap = require('./kvMap');
 var ipNameMap = new keyValueMap();
 var config = new fileConfig('config', function (newValue) {
     var newIpNameMap = newValue.ipNameMap;
-    console.log("configure changed: " + newIpNameMap);
+    console.log("configure changed: " + JSON.stringify(newIpNameMap));
     ipNameMap.set(newIpNameMap);
 });
 ipNameMap.set(config.ipNameMap);
@@ -17,7 +17,7 @@ var slack = new slackBot({
 	channel: config.slack.channel
 });
 
-const serverPort = 14172;
+const serverPort  = 14172;
 
 for (ip in config.notiServers) {
     var client = new snsClient(ip, config.notiServers[ip], slack, ipNameMap);
